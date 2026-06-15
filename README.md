@@ -588,4 +588,23 @@ refreshPlayers()
 Players.PlayerAdded:Connect(refreshPlayers)
 Players.PlayerRemoving:Connect(refreshPlayers)
 
+-- ====== زر الدائرة الخضراء (للتحكم) ======
+local ToggleCircle = Instance.new("TextButton", ScreenGui)
+ToggleCircle.Size             = UDim2.new(0, 60, 0, 60)
+ToggleCircle.Position         = UDim2.new(0.85, 0, 0.8, 0)
+ToggleCircle.BackgroundColor3 = Color3.fromRGB(100, 255, 120)
+ToggleCircle.Text             = "🌿"
+ToggleCircle.TextColor3       = WHITE
+ToggleCircle.TextSize         = 25
+ToggleCircle.Font             = Enum.Font.GothamBold
+ToggleCircle.AutoButtonColor  = false
+ToggleCircle.ZIndex           = 100
+corner(ToggleCircle, 999)
+mkStroke(ToggleCircle, WHITE, 3, 0)
+makeDraggable(ToggleCircle)
+
+ToggleCircle.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
 print("[MO+SH+BLO] ✅ جاهز — الريموت: HDAdminHDClient > RequestCommandModification")

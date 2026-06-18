@@ -4,48 +4,37 @@
 
 local Players      = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local RunService   = game:GetService("RunService")
 local UIS          = game:GetService("UserInputService")
 local RS           = game:GetService("ReplicatedStorage")
 local LocalPlayer  = Players.LocalPlayer
 
--- ريموت الشات (يظهر بالشات + HD Admin يقرأه)
 local DataRemote = RS
     :WaitForChild("RemoteEvents")
     :WaitForChild("DataService")
 
--- ريموت HD Admin (تنفيذ مباشر بدون شات)
 local HDRemote = RS
     :WaitForChild("HDAdminHDClient")
     :WaitForChild("Signals")
     :WaitForChild("RequestCommandModification")
 
--- إرسال رسالة واحدة كبيرة — تظهر بالشات + تنفّذ
 local function sendBigMessage(bigMsg)
-    task.spawn(function()
-        -- عبر الشات (يظهر للكل)
-        pcall(function() DataRemote:FireServer(bigMsg) end)
-        -- عبر HD Admin مباشرة (للتأكد من التنفيذ)
-        pcall(function() HDRemote:InvokeServer(bigMsg) end)
-    end)
+    pcall(function() DataRemote:FireServer(bigMsg) end)
+    pcall(function() HDRemote:InvokeServer(bigMsg) end)
 end
 
--- الحالة
 local selectedPlayer = nil
 local nameMode       = "full"
-local spamActive     = {false, false, false}
+local spamActive     = {false,false,false,false,false,false,false,false,false,false}
 
--- الألوان
 local GREEN     = Color3.fromRGB(80, 200, 100)
 local GREEN_MID = Color3.fromRGB(30, 130, 55)
 local WHITE     = Color3.fromRGB(255, 255, 255)
+local ORANGE    = Color3.fromRGB(255, 165, 40)
 
--- تنظيف نسخة قديمة
 pcall(function()
     LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("MO_SH_BLO_Hub"):Destroy()
 end)
 
--- ====== ScreenGui ======
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name           = "MO_SH_BLO_Hub"
 ScreenGui.ResetOnSpawn   = false
@@ -53,7 +42,7 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.DisplayOrder   = 2147483647
 ScreenGui.Parent         = LocalPlayer:WaitForChild("PlayerGui")
 
--- ====== دوال مساعدة ======
+-- ── مساعدات ──────────────────────────────────────────
 local function corner(p, r)
     local c = Instance.new("UICorner", p)
     c.CornerRadius = UDim.new(0, r or 10)
@@ -121,6 +110,37 @@ local function makeDraggable(frame, handle)
     end)
 end
 
+-- ── تحقق من وجود وهمي (لاعب آخر بنفس بداية الاسم) ──
+local function hasConflict(playerName)
+    local prefix3 = string.lower(string.sub(playerName, 1, 3))
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Name ~= playerName then
+            if string.lower(string.sub(p.Name, 1, 3)) == prefix3 then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- ── بناء الهدف الذكي ────────────────────────────────
+-- إذا المستخدم اختار وضع "3 أحرف" لكن عند اللاعب وهمي →
+-- نستخدم الاسم الكامل تلقائياً لضمان إصابة الشخص الصح فقط.
+local function buildTarget()
+    if not selectedPlayer then return nil end
+
+    if nameMode == "short" then
+        if hasConflict(selectedPlayer) then
+            -- وهمي موجود → الاسم الكامل لمنع إصابة غلط
+            return selectedPlayer
+        else
+            return string.sub(selectedPlayer, 1, 3)
+        end
+    end
+
+    return selectedPlayer
+end
+
 -- ====================================================
 --                  MAIN FRAME
 -- ====================================================
@@ -137,7 +157,6 @@ corner(MainFrame, 16)
 
 local mainStroke = mkStroke(MainFrame, WHITE, 2.5, 0.2)
 
--- نبض أخضر + حواف بيضاء
 task.spawn(function()
     while MainFrame and MainFrame.Parent do
         local t = tick()
@@ -155,7 +174,6 @@ end)
 
 makeDraggable(MainFrame)
 
--- ====== شريط العنوان ======
 local TitleBar = Instance.new("Frame")
 TitleBar.Size                   = UDim2.new(1, 0, 0, 44)
 TitleBar.BackgroundColor3       = Color3.fromRGB(5, 30, 12)
@@ -168,7 +186,7 @@ gradient(TitleBar, Color3.fromRGB(15, 80, 35), Color3.fromRGB(5, 35, 15), 90)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size               = UDim2.new(1, -50, 1, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text               = "🌿  MO + SH + BLO  🌿"
+TitleLabel.Text               = "🌿  MO + MO TOP 1 + MOILA TOP 1  🌿"
 TitleLabel.Font               = Enum.Font.GothamBlack
 TitleLabel.TextSize           = 19
 TitleLabel.TextColor3         = GREEN
@@ -204,7 +222,7 @@ mkStroke(CloseBtn, WHITE, 1, 0.5)
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
 -- ====================================================
---              SCROLL CONTENT (عمودي)
+--              SCROLL CONTENT
 -- ====================================================
 local Content = Instance.new("ScrollingFrame")
 Content.Size                 = UDim2.new(1, -14, 1, -54)
@@ -273,7 +291,7 @@ pLP.PaddingTop    = UDim.new(0, 4)
 pLP.PaddingBottom = UDim.new(0, 4)
 pLP.Parent        = playerScroll
 
--- شاشة المستهدف
+-- شريط الهدف — يوضح الاسم المستخدَم الفعلي في الأوامر
 local targetDisplay = Instance.new("TextLabel")
 targetDisplay.Size                   = UDim2.new(1, 0, 0, 26)
 targetDisplay.BackgroundColor3       = Color3.fromRGB(8, 38, 16)
@@ -374,44 +392,95 @@ end)
 updateModeButtons()
 
 -- ====================================================
---               3) الأقسام الثلاثة
+--          تشغيل السبام الفعلي
+-- ====================================================
+local function doSpam(idx, cmds, startBtn)
+    if spamActive[idx] then return end
+    spamActive[idx] = true
+    startBtn.Text = "⏳  يعمل..."
+    task.spawn(function()
+        while spamActive[idx] do
+            local prefix = (prefixBox.Text ~= "" and prefixBox.Text or ";")
+            local target = buildTarget()
+            local parts  = {}
+            for _, cmd in ipairs(cmds) do
+                local finalCmd = prefix .. cmd
+                if target then finalCmd = finalCmd .. " " .. target end
+                table.insert(parts, finalCmd)
+            end
+            sendBigMessage(table.concat(parts, " "))
+            task.wait(0.5)
+        end
+        startBtn.Text = "▶  تشغيل"
+    end)
+end
+
+-- ====================================================
+--               الأقسام العشرة
 -- ====================================================
 local CMDS = {
-    -- نسخ عادي
     {"LOGS","NV","RE","CLOGS","LOGS","NV","RE","CLOGS",
      "LOGS","NV","RE","CLOGS","LOGS","NV","RE","CLOGS",
      "LOGS","NV","RE","CLOGS","LOGS","NV","RE","CLOGS",
      "LOGS","NV","RE","CLOGS","LOGS","NV","RE","CLOGS"},
-    -- سبام قوي
     {"JAIL","ICE","NV","RE","LOGS","RES","JUMP","FLY",
      "JAIL","ICE","NV","RE","LOGS","RES","JUMP","FLY",
      "JAIL","ICE","NV","RE","LOGS","RES","JUMP","FLY",
      "JAIL","ICE","NV","RE","LOGS","RES","JUMP","FLY",
      "JAIL","ICE","NV","RE","LOGS","RES","JUMP","FLY"},
-    -- سبام غامض
     {"RE","EXPLODE","RES","LOGS","WARP","NV",
      "RE","EXPLODE","RES","LOGS","WARP","NV",
      "RE","EXPLODE","RES","LOGS","WARP","NV",
      "RE","EXPLODE","RES","LOGS","WARP","NV",
      "RE","EXPLODE","RES","LOGS","WARP","NV"},
+    {"RE","RE","RE","RE","RE","RE","RE","RE","RE","RE",
+     "RE","RE","RE","RE","RE","RE","RE","RE","RE","RE"},
+    {"APPARATE INF","FLING","JP INF","JC","ICE","GUMP","RE","RES",
+     "APPARATE INF","FLING","JP INF","JC","ICE","GUMP","RE","RES"},
+    {"logs","nv","re","clogs","logs","nv","re","clogs",
+     "logs","nv","re","clogs","logs","nv","re","clogs",
+     "logs","nv","re","clogs","logs","nv","re","clogs",
+     "logs","nv","re","clogs","logs","nv","re","clogs"},
+    {"jail","ice","nv","re","logs","res","jump","fly",
+     "jail","ice","nv","re","logs","res","jump","fly",
+     "jail","ice","nv","re","logs","res","jump","fly",
+     "jail","ice","nv","re","logs","res","jump","fly",
+     "jail","ice","nv","re","logs","res","jump","fly"},
+    {"re","explode","res","logs","warp","nv",
+     "re","explode","res","logs","warp","nv",
+     "re","explode","res","logs","warp","nv",
+     "re","explode","res","logs","warp","nv",
+     "re","explode","res","logs","warp","nv"},
+    {"re","re","re","re","re","re","re","re","re","re",
+     "re","re","re","re","re","re","re","re","re","re"},
+    {"apparate inf","fling","jp inf","jc","ice","gump","re","res",
+     "apparate inf","fling","jp inf","jc","ice","gump","re","res"},
 }
 
 local SECTION_INFO = {
-    {label = "⚡  نسخ عادي",   c1 = Color3.fromRGB(18, 110, 45),  c2 = Color3.fromRGB(8,  60, 22)},
-    {label = "💥  سبام قوي",   c1 = Color3.fromRGB(170, 70,  18),  c2 = Color3.fromRGB(110, 38, 8)},
-    {label = "👻  سبام غامض",  c1 = Color3.fromRGB(60,  18, 140),  c2 = Color3.fromRGB(35,  8, 90)},
+    {label="⚡  نسخ عادي",       c1=Color3.fromRGB(18,110,45), c2=Color3.fromRGB(8,60,22)},
+    {label="💥  سبام قوي",       c1=Color3.fromRGB(170,70,18), c2=Color3.fromRGB(110,38,8)},
+    {label="👻  سبام غامض",      c1=Color3.fromRGB(60,18,140), c2=Color3.fromRGB(35,8,90)},
+    {label="🔄  نسخ re",         c1=Color3.fromRGB(20,90,180), c2=Color3.fromRGB(8,40,110)},
+    {label="🔱  سبام الفئة |||", c1=Color3.fromRGB(180,140,0), c2=Color3.fromRGB(100,75,0)},
+    {label="⚡  نسخ عادي",       c1=Color3.fromRGB(18,110,45), c2=Color3.fromRGB(8,60,22)},
+    {label="💥  سبام قوي",       c1=Color3.fromRGB(170,70,18), c2=Color3.fromRGB(110,38,8)},
+    {label="👻  سبام غامض",      c1=Color3.fromRGB(60,18,140), c2=Color3.fromRGB(35,8,90)},
+    {label="🔄  نسخ re",         c1=Color3.fromRGB(20,90,180), c2=Color3.fromRGB(8,40,110)},
+    {label="🔱  سبام الفئة |||", c1=Color3.fromRGB(180,140,0), c2=Color3.fromRGB(100,75,0)},
 }
 
-for i = 1, 3 do
-    local info = SECTION_INFO[i]
-    local cmds = CMDS[i]
+local function makeSection(i, baseLayout)
+    local info   = SECTION_INFO[i]
+    local cmds   = CMDS[i]
+    local suffix = (i > 5) and "  (صغير)" or ""
 
     local sec = Instance.new("Frame")
     sec.Size                   = UDim2.new(1, 0, 0, 82)
     sec.BackgroundColor3       = Color3.fromRGB(6, 28, 12)
     sec.BackgroundTransparency = 0.15
     sec.BorderSizePixel        = 0
-    sec.LayoutOrder            = 4 + i
+    sec.LayoutOrder            = baseLayout + i
     sec.Parent                 = Content
     corner(sec, 11)
     gradient(sec, info.c1, info.c2, 140)
@@ -422,7 +491,7 @@ for i = 1, 3 do
     secLbl.Size               = UDim2.new(1, -10, 0, 26)
     secLbl.Position           = UDim2.new(0, 5, 0, 6)
     secLbl.BackgroundTransparency = 1
-    secLbl.Text               = info.label
+    secLbl.Text               = info.label .. suffix
     secLbl.TextColor3         = WHITE
     secLbl.Font               = Enum.Font.GothamBlack
     secLbl.TextSize           = 14
@@ -459,45 +528,51 @@ for i = 1, 3 do
     gradient(stopBtn, Color3.fromRGB(195, 45, 45), Color3.fromRGB(120, 20, 20), 90)
     mkStroke(stopBtn, WHITE, 1, 0.35)
 
-    -- ✅ كل أمر يُرسل لحاله عبر InvokeServer مع فاصل 0.3 ثانية
-    local idx = i
     startBtn.MouseButton1Click:Connect(function()
-        if spamActive[idx] then return end
-        spamActive[idx] = true
-        startBtn.Text = "⏳  يعمل..."
-        task.spawn(function()
-            while spamActive[idx] do
-                local prefix = (prefixBox.Text ~= "" and prefixBox.Text or ";")
-                local target = nil
-                if selectedPlayer then
-                    target = (nameMode == "full")
-                        and selectedPlayer
-                        or  string.sub(selectedPlayer, 1, 3)
-                end
-                -- بناء رسالة واحدة كبيرة بكل الأوامر
-                local parts = {}
-                for _, cmd in ipairs(cmds) do
-                    local finalCmd = prefix .. cmd
-                    if target then finalCmd = finalCmd .. " " .. target end
-                    table.insert(parts, finalCmd)
-                end
-                local bigMsg = table.concat(parts, " ")
-                -- ترسل رسالة واحدة — تظهر بالشات + تنفّذ
-                sendBigMessage(bigMsg)
-                task.wait(1)
-            end
-            startBtn.Text = "▶  تشغيل"
-        end)
+        doSpam(i, cmds, startBtn)
     end)
 
     stopBtn.MouseButton1Click:Connect(function()
-        spamActive[idx] = false
+        spamActive[i] = false
         startBtn.Text = "▶  تشغيل"
     end)
 end
 
+for i = 1, 5  do makeSection(i, 4) end
+
+-- فاصل بين الكبير والصغير
+local sepFrame = Instance.new("Frame")
+sepFrame.Size                   = UDim2.new(1, 0, 0, 34)
+sepFrame.BackgroundTransparency = 1
+sepFrame.LayoutOrder            = 10
+sepFrame.Parent                 = Content
+
+local sepLine = Instance.new("Frame")
+sepLine.Size              = UDim2.new(1, 0, 0, 2)
+sepLine.Position          = UDim2.new(0, 0, 0.5, 0)
+sepLine.BackgroundColor3  = GREEN
+sepLine.BorderSizePixel   = 0
+sepLine.Parent            = sepFrame
+gradient(sepLine, Color3.fromRGB(0, 80, 30), GREEN, 0)
+
+local sepLabel = Instance.new("TextLabel")
+sepLabel.Size                   = UDim2.new(0, 190, 1, -4)
+sepLabel.Position               = UDim2.new(0.5, -95, 0, 2)
+sepLabel.BackgroundColor3       = Color3.fromRGB(10, 50, 20)
+sepLabel.BackgroundTransparency = 0
+sepLabel.Text                   = "🔡  نسخ بأحرف صغيرة"
+sepLabel.TextColor3             = GREEN
+sepLabel.Font                   = Enum.Font.GothamBlack
+sepLabel.TextSize               = 13
+sepLabel.BorderSizePixel        = 0
+sepLabel.Parent                 = sepFrame
+corner(sepLabel, 8)
+mkStroke(sepLabel, GREEN, 1.5, 0.2)
+
+for i = 6, 10 do makeSection(i, 5) end
+
 -- ====================================================
---             4) تحديث قائمة اللاعبين
+--          تحديث قائمة اللاعبين
 -- ====================================================
 local function flashTarget()
     TweenService:Create(targetDisplay, TweenInfo.new(0.12),
@@ -506,6 +581,24 @@ local function flashTarget()
         TweenService:Create(targetDisplay, TweenInfo.new(0.3),
             {BackgroundColor3 = Color3.fromRGB(8, 38, 16)}):Play()
     end)
+end
+
+-- تحديث شريط الهدف بالاسم الفعلي الذي سيُستخدم
+local function updateTargetDisplay()
+    if not selectedPlayer then
+        targetDisplay.Text      = "🎯  المستهدف: الكل"
+        targetDisplay.TextColor3 = Color3.fromRGB(140, 255, 165)
+        return
+    end
+    local effective = buildTarget()
+    if effective ~= selectedPlayer then
+        -- تم تجاوز وضع 3 أحرف بسبب وهمي → أعلم المستخدم
+        targetDisplay.Text      = "🛡️  " .. selectedPlayer .. "  ← اسم كامل (في وهمي)"
+        targetDisplay.TextColor3 = Color3.fromRGB(255, 200, 80)
+    else
+        targetDisplay.Text      = "🎯  المستهدف: " .. effective
+        targetDisplay.TextColor3 = Color3.fromRGB(140, 255, 165)
+    end
 end
 
 local function refreshPlayers()
@@ -544,51 +637,72 @@ local function refreshPlayers()
 
     allBtn.MouseButton1Click:Connect(function()
         selectedPlayer = nil
-        targetDisplay.Text = "🎯  المستهدف: الكل"
+        updateTargetDisplay()
         flashTarget()
     end)
 
-    for i, p in ipairs(Players:GetPlayers()) do
-        local w   = math.max(72, #p.Name * 8 + 22)
+    for idx, p in ipairs(Players:GetPlayers()) do
+        local ghost    = hasConflict(p.Name)
+        -- ⚠️ على أسماء فيها وهمي (مجرد تلوين إضافي للمعلومة)
+        local btnLabel = ghost and ("⚠️ " .. p.Name) or ("👤 " .. p.Name)
+        local w        = math.max(72, #btnLabel * 8 + 22)
+
         local btn = Instance.new("TextButton")
         btn.Size             = UDim2.new(0, w, 0, 30)
-        btn.Text             = "👤 " .. p.Name
+        btn.Text             = btnLabel
         btn.Font             = Enum.Font.GothamBold
         btn.TextSize         = 10
         btn.AutoButtonColor  = false
         btn.BorderSizePixel  = 0
-        btn.BackgroundColor3 = Color3.fromRGB(6, 28, 12)
+        btn.BackgroundColor3 = ghost
+            and Color3.fromRGB(55, 22, 5)
+            or  Color3.fromRGB(6, 28, 12)
         btn.TextColor3       = WHITE
-        btn.LayoutOrder      = i
+        btn.LayoutOrder      = idx
         btn.Parent           = playerScroll
         corner(btn, 7)
-        mkStroke(btn, WHITE, 1.2, 0.4)
 
-        -- نبض أبيض/أسود لأسماء اللاعبين
+        if ghost then
+            local ws = mkStroke(btn, ORANGE, 1.5, 0.15)
+            pulsedStroke(ws, 3.5, 0.0, 0.5, idx * 0.6)
+        else
+            mkStroke(btn, WHITE, 1.2, 0.4)
+        end
+
         task.spawn(function()
             while btn and btn.Parent do
                 local t  = tick()
-                local pp = (math.sin(t * 3.5 + i * 0.9) + 1) / 2
+                local pp = (math.sin(t * 3.5 + idx * 0.9) + 1) / 2
                 local bri = math.floor(80 + pp * 175)
-                btn.TextColor3       = Color3.fromRGB(bri, bri, bri)
-                btn.BackgroundColor3 = Color3.fromRGB(4, math.floor(22 + pp * 18), 8)
+                btn.TextColor3 = Color3.fromRGB(bri, bri, bri)
+                btn.BackgroundColor3 = ghost
+                    and Color3.fromRGB(math.floor(48+pp*28), math.floor(18+pp*10), 4)
+                    or  Color3.fromRGB(4, math.floor(22+pp*18), 8)
                 task.wait(0.04)
             end
         end)
 
         btn.MouseButton1Click:Connect(function()
             selectedPlayer = p.Name
-            targetDisplay.Text = "🎯  المستهدف: " .. p.Name
+            updateTargetDisplay()
             flashTarget()
         end)
     end
 end
 
 refreshPlayers()
-Players.PlayerAdded:Connect(refreshPlayers)
-Players.PlayerRemoving:Connect(refreshPlayers)
+Players.PlayerAdded:Connect(function()
+    refreshPlayers()
+    updateTargetDisplay()
+end)
+Players.PlayerRemoving:Connect(function()
+    refreshPlayers()
+    updateTargetDisplay()
+end)
 
--- ====== زر الدائرة الخضراء (للتحكم) ======
+-- ====================================================
+--          زر الدائرة الخضراء
+-- ====================================================
 local ToggleCircle = Instance.new("TextButton", ScreenGui)
 ToggleCircle.Size             = UDim2.new(0, 60, 0, 60)
 ToggleCircle.Position         = UDim2.new(0.85, 0, 0.8, 0)
@@ -607,4 +721,4 @@ ToggleCircle.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
-print("[MO+SH+BLO] ✅ جاهز — الريموت: HDAdminHDClient > RequestCommandModification")
+print("[MO+SH+BLO] ✅ جاهز — منع الوهمي: تلقائي (اسم كامل عند التعارض)")

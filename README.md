@@ -42,7 +42,6 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.DisplayOrder   = 2147483647
 ScreenGui.Parent         = LocalPlayer:WaitForChild("PlayerGui")
 
--- ── مساعدات ──────────────────────────────────────────
 local function corner(p, r)
     local c = Instance.new("UICorner", p)
     c.CornerRadius = UDim.new(0, r or 10)
@@ -110,7 +109,6 @@ local function makeDraggable(frame, handle)
     end)
 end
 
--- ── تحقق من وجود وهمي (لاعب آخر بنفس بداية الاسم) ──
 local function hasConflict(playerName)
     local prefix3 = string.lower(string.sub(playerName, 1, 3))
     for _, p in ipairs(Players:GetPlayers()) do
@@ -123,21 +121,15 @@ local function hasConflict(playerName)
     return false
 end
 
--- ── بناء الهدف الذكي ────────────────────────────────
--- إذا المستخدم اختار وضع "3 أحرف" لكن عند اللاعب وهمي →
--- نستخدم الاسم الكامل تلقائياً لضمان إصابة الشخص الصح فقط.
 local function buildTarget()
     if not selectedPlayer then return nil end
-
     if nameMode == "short" then
         if hasConflict(selectedPlayer) then
-            -- وهمي موجود → الاسم الكامل لمنع إصابة غلط
             return selectedPlayer
         else
             return string.sub(selectedPlayer, 1, 3)
         end
     end
-
     return selectedPlayer
 end
 
@@ -186,7 +178,7 @@ gradient(TitleBar, Color3.fromRGB(15, 80, 35), Color3.fromRGB(5, 35, 15), 90)
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size               = UDim2.new(1, -50, 1, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text               = "🌿  MO + MO TOP 1 + MOILA TOP 1  🌿"
+TitleLabel.Text               = "🌿  MO + SH + BLO  🌿"
 TitleLabel.Font               = Enum.Font.GothamBlack
 TitleLabel.TextSize           = 19
 TitleLabel.TextColor3         = GREEN
@@ -291,7 +283,6 @@ pLP.PaddingTop    = UDim.new(0, 4)
 pLP.PaddingBottom = UDim.new(0, 4)
 pLP.Parent        = playerScroll
 
--- شريط الهدف — يوضح الاسم المستخدَم الفعلي في الأوامر
 local targetDisplay = Instance.new("TextLabel")
 targetDisplay.Size                   = UDim2.new(1, 0, 0, 26)
 targetDisplay.BackgroundColor3       = Color3.fromRGB(8, 38, 16)
@@ -540,7 +531,6 @@ end
 
 for i = 1, 5  do makeSection(i, 4) end
 
--- فاصل بين الكبير والصغير
 local sepFrame = Instance.new("Frame")
 sepFrame.Size                   = UDim2.new(1, 0, 0, 34)
 sepFrame.BackgroundTransparency = 1
@@ -572,7 +562,276 @@ mkStroke(sepLabel, GREEN, 1.5, 0.2)
 for i = 6, 10 do makeSection(i, 5) end
 
 -- ====================================================
---          تحديث قائمة اللاعبين
+--   ميزة الغامض — اختيار متعدد بأول حرف لكل لاعب
+-- ====================================================
+
+local ghostSelectedPlayers = {}
+local ghostSpamActive      = false
+
+local GHOST_CMDS = {
+    "RE","EXPLODE","RES","LOGS","WARP","NV",
+    "RE","EXPLODE","RES","LOGS","WARP","NV",
+    "RE","EXPLODE","RES","LOGS","WARP","NV",
+    "RE","EXPLODE","RES","LOGS","WARP","NV",
+    "RE","EXPLODE","RES","LOGS","WARP","NV",
+}
+
+local ghostSepFrame = Instance.new("Frame")
+ghostSepFrame.Size                   = UDim2.new(1, 0, 0, 34)
+ghostSepFrame.BackgroundTransparency = 1
+ghostSepFrame.LayoutOrder            = 16
+ghostSepFrame.Parent                 = Content
+
+local ghostSepLine = Instance.new("Frame")
+ghostSepLine.Size             = UDim2.new(1, 0, 0, 2)
+ghostSepLine.Position         = UDim2.new(0, 0, 0.5, 0)
+ghostSepLine.BackgroundColor3 = Color3.fromRGB(150, 80, 255)
+ghostSepLine.BorderSizePixel  = 0
+ghostSepLine.Parent           = ghostSepFrame
+gradient(ghostSepLine, Color3.fromRGB(0, 0, 0), Color3.fromRGB(150, 80, 255), 0)
+
+local ghostSepLabel = Instance.new("TextLabel")
+ghostSepLabel.Size                   = UDim2.new(0, 190, 1, -4)
+ghostSepLabel.Position               = UDim2.new(0.5, -95, 0, 2)
+ghostSepLabel.BackgroundColor3       = Color3.fromRGB(20, 5, 50)
+ghostSepLabel.BackgroundTransparency = 0
+ghostSepLabel.Text                   = "👻  ميزة الغامض"
+ghostSepLabel.TextColor3             = Color3.fromRGB(200, 140, 255)
+ghostSepLabel.Font                   = Enum.Font.GothamBlack
+ghostSepLabel.TextSize               = 13
+ghostSepLabel.BorderSizePixel        = 0
+ghostSepLabel.Parent                 = ghostSepFrame
+corner(ghostSepLabel, 8)
+mkStroke(ghostSepLabel, Color3.fromRGB(150, 80, 255), 1.5, 0.2)
+
+local ghostSec = Instance.new("Frame")
+ghostSec.Size                   = UDim2.new(1, 0, 0, 152)
+ghostSec.BackgroundTransparency = 0.15
+ghostSec.BorderSizePixel        = 0
+ghostSec.LayoutOrder            = 17
+ghostSec.Parent                 = Content
+corner(ghostSec, 11)
+gradient(ghostSec, Color3.fromRGB(60, 18, 140), Color3.fromRGB(25, 5, 80), 140)
+local ghostSecS = mkStroke(ghostSec, Color3.fromRGB(200, 140, 255), 1.5, 0.3)
+pulsedStroke(ghostSecS, 2.2, 0.1, 0.7, 7.7)
+
+local ghostTitle = Instance.new("TextLabel")
+ghostTitle.Size                   = UDim2.new(1, -10, 0, 26)
+ghostTitle.Position               = UDim2.new(0, 5, 0, 5)
+ghostTitle.BackgroundTransparency = 1
+ghostTitle.Text                   = "👻  اختر اللاعبين ← يُستخدم أول حرف من كل اسم"
+ghostTitle.TextColor3             = Color3.fromRGB(220, 170, 255)
+ghostTitle.Font                   = Enum.Font.GothamBlack
+ghostTitle.TextSize               = 13
+ghostTitle.TextXAlignment         = Enum.TextXAlignment.Right
+ghostTitle.Parent                 = ghostSec
+
+task.spawn(function()
+    while ghostTitle and ghostTitle.Parent do
+        local t = tick()
+        local p = (math.sin(t * 2.8) + 1) / 2
+        ghostTitle.TextColor3 = Color3.fromRGB(
+            math.floor(180 + p * 40),
+            math.floor(100 + p * 60),
+            255
+        )
+        task.wait(0.04)
+    end
+end)
+
+local ghostScroll = Instance.new("ScrollingFrame")
+ghostScroll.Size                   = UDim2.new(1, -10, 0, 36)
+ghostScroll.Position               = UDim2.new(0, 5, 0, 34)
+ghostScroll.BackgroundColor3       = Color3.fromRGB(15, 4, 40)
+ghostScroll.BackgroundTransparency = 0.25
+ghostScroll.ScrollBarThickness     = 3
+ghostScroll.ScrollBarImageColor3   = Color3.fromRGB(180, 100, 255)
+ghostScroll.BorderSizePixel        = 0
+ghostScroll.CanvasSize             = UDim2.new()
+ghostScroll.AutomaticCanvasSize    = Enum.AutomaticSize.X
+ghostScroll.ScrollingDirection     = Enum.ScrollingDirection.X
+ghostScroll.Parent                 = ghostSec
+corner(ghostScroll, 7)
+local ghostScrollStroke = mkStroke(ghostScroll, Color3.fromRGB(150, 80, 255), 1.5, 0.3)
+pulsedStroke(ghostScrollStroke, 3, 0.1, 0.6, 2)
+
+local ghostLL = Instance.new("UIListLayout")
+ghostLL.FillDirection     = Enum.FillDirection.Horizontal
+ghostLL.Padding           = UDim.new(0, 5)
+ghostLL.VerticalAlignment = Enum.VerticalAlignment.Center
+ghostLL.Parent            = ghostScroll
+
+local ghostLP = Instance.new("UIPadding")
+ghostLP.PaddingLeft   = UDim.new(0, 5)
+ghostLP.PaddingRight  = UDim.new(0, 5)
+ghostLP.PaddingTop    = UDim.new(0, 3)
+ghostLP.PaddingBottom = UDim.new(0, 3)
+ghostLP.Parent        = ghostScroll
+
+local ghostLetterBar = Instance.new("TextLabel")
+ghostLetterBar.Size                   = UDim2.new(1, -10, 0, 24)
+ghostLetterBar.Position               = UDim2.new(0, 5, 0, 74)
+ghostLetterBar.BackgroundColor3       = Color3.fromRGB(15, 4, 40)
+ghostLetterBar.BackgroundTransparency = 0.15
+ghostLetterBar.Text                   = "🔡  الأحرف المختارة: لا يوجد"
+ghostLetterBar.TextColor3             = Color3.fromRGB(200, 150, 255)
+ghostLetterBar.Font                   = Enum.Font.GothamBold
+ghostLetterBar.TextSize               = 11
+ghostLetterBar.BorderSizePixel        = 0
+ghostLetterBar.Parent                 = ghostSec
+corner(ghostLetterBar, 6)
+mkStroke(ghostLetterBar, Color3.fromRGB(130, 60, 220), 1, 0.35)
+
+local function updateGhostLetterBar()
+    local letters = {}
+    for name, selected in pairs(ghostSelectedPlayers) do
+        if selected then
+            local fl = string.lower(string.sub(name, 1, 1))
+            table.insert(letters, fl .. " (" .. name .. ")")
+        end
+    end
+    if #letters == 0 then
+        ghostLetterBar.Text       = "🔡  الأحرف المختارة: لا يوجد"
+        ghostLetterBar.TextColor3 = Color3.fromRGB(180, 120, 255)
+    else
+        ghostLetterBar.Text       = "🔡  " .. table.concat(letters, "  ·  ")
+        ghostLetterBar.TextColor3 = Color3.fromRGB(230, 200, 255)
+    end
+end
+
+local ghostStartBtn = Instance.new("TextButton")
+ghostStartBtn.Size             = UDim2.new(0.48, -4, 0, 38)
+ghostStartBtn.Position         = UDim2.new(0, 4, 0, 104)
+ghostStartBtn.Text             = "▶  تشغيل الغامض"
+ghostStartBtn.TextColor3       = WHITE
+ghostStartBtn.Font             = Enum.Font.GothamBold
+ghostStartBtn.TextSize         = 13
+ghostStartBtn.AutoButtonColor  = false
+ghostStartBtn.BorderSizePixel  = 0
+ghostStartBtn.Parent           = ghostSec
+corner(ghostStartBtn, 9)
+gradient(ghostStartBtn, Color3.fromRGB(110, 30, 220), Color3.fromRGB(60, 12, 140), 90)
+mkStroke(ghostStartBtn, WHITE, 1, 0.3)
+
+local ghostStopBtn = Instance.new("TextButton")
+ghostStopBtn.Size             = UDim2.new(0.48, -4, 0, 38)
+ghostStopBtn.Position         = UDim2.new(0.5, 2, 0, 104)
+ghostStopBtn.Text             = "⏹  إيقاف"
+ghostStopBtn.TextColor3       = WHITE
+ghostStopBtn.Font             = Enum.Font.GothamBold
+ghostStopBtn.TextSize         = 13
+ghostStopBtn.AutoButtonColor  = false
+ghostStopBtn.BorderSizePixel  = 0
+ghostStopBtn.Parent           = ghostSec
+corner(ghostStopBtn, 9)
+gradient(ghostStopBtn, Color3.fromRGB(195, 45, 45), Color3.fromRGB(120, 20, 20), 90)
+mkStroke(ghostStopBtn, WHITE, 1, 0.3)
+
+ghostStartBtn.MouseButton1Click:Connect(function()
+    if ghostSpamActive then return end
+    local selectedNames = {}
+    for name, sel in pairs(ghostSelectedPlayers) do
+        if sel then table.insert(selectedNames, name) end
+    end
+    if #selectedNames == 0 then
+        ghostLetterBar.Text       = "⚠️  اختر لاعب واحد على الأقل!"
+        ghostLetterBar.TextColor3 = Color3.fromRGB(255, 180, 60)
+        task.delay(1.8, updateGhostLetterBar)
+        return
+    end
+    ghostSpamActive    = true
+    ghostStartBtn.Text = "⏳  يعمل..."
+    task.spawn(function()
+        while ghostSpamActive do
+            local prefix = (prefixBox.Text ~= "" and prefixBox.Text or ";")
+            local parts  = {}
+            for _, cmd in ipairs(GHOST_CMDS) do
+                for _, name in ipairs(selectedNames) do
+                    local letter = string.lower(string.sub(name, 1, 1))
+                    table.insert(parts, prefix .. cmd .. " " .. letter)
+                end
+            end
+            sendBigMessage(table.concat(parts, " "))
+            task.wait(0.5)
+        end
+        ghostStartBtn.Text = "▶  تشغيل الغامض"
+    end)
+end)
+
+ghostStopBtn.MouseButton1Click:Connect(function()
+    ghostSpamActive    = false
+    ghostStartBtn.Text = "▶  تشغيل الغامض"
+end)
+
+local function refreshGhostPlayers()
+    for _, v in pairs(ghostScroll:GetChildren()) do
+        if v:IsA("TextButton") then v:Destroy() end
+    end
+    local alive = {}
+    for _, p in ipairs(Players:GetPlayers()) do alive[p.Name] = true end
+    for name in pairs(ghostSelectedPlayers) do
+        if not alive[name] then ghostSelectedPlayers[name] = nil end
+    end
+
+    for idx, p in ipairs(Players:GetPlayers()) do
+        local isSel    = ghostSelectedPlayers[p.Name] == true
+        local fl       = string.lower(string.sub(p.Name, 1, 1))
+        local btnLabel = (isSel and "✅ " or "⬜ ") .. p.Name .. " [" .. fl .. "]"
+        local w        = math.max(85, #btnLabel * 7 + 18)
+
+        local btn = Instance.new("TextButton")
+        btn.Size             = UDim2.new(0, w, 0, 28)
+        btn.Text             = btnLabel
+        btn.Font             = Enum.Font.GothamBold
+        btn.TextSize         = 10
+        btn.AutoButtonColor  = false
+        btn.BorderSizePixel  = 0
+        btn.BackgroundColor3 = isSel
+            and Color3.fromRGB(75, 22, 170)
+            or  Color3.fromRGB(18, 5, 50)
+        btn.TextColor3       = WHITE
+        btn.LayoutOrder      = idx
+        btn.Parent           = ghostScroll
+        corner(btn, 6)
+        if isSel then
+            local ss = mkStroke(btn, Color3.fromRGB(200, 130, 255), 1.8, 0.05)
+            pulsedStroke(ss, 4, 0, 0.4, idx * 0.5)
+        else
+            mkStroke(btn, Color3.fromRGB(100, 50, 200), 1.2, 0.45)
+        end
+
+        task.spawn(function()
+            while btn and btn.Parent do
+                local t  = tick()
+                local pp = (math.sin(t * 3 + idx * 1.1) + 1) / 2
+                local bri = math.floor(90 + pp * 165)
+                btn.TextColor3 = Color3.fromRGB(bri, bri, bri)
+                task.wait(0.04)
+            end
+        end)
+
+        btn.MouseButton1Click:Connect(function()
+            ghostSelectedPlayers[p.Name] = not (ghostSelectedPlayers[p.Name] == true)
+            refreshGhostPlayers()
+            updateGhostLetterBar()
+        end)
+    end
+    updateGhostLetterBar()
+end
+
+refreshGhostPlayers()
+
+Players.PlayerAdded:Connect(function()
+    task.wait(0.15)
+    refreshGhostPlayers()
+end)
+Players.PlayerRemoving:Connect(function()
+    task.wait(0.15)
+    refreshGhostPlayers()
+end)
+
+-- ====================================================
+--          تحديث قائمة اللاعبين الرئيسية
 -- ====================================================
 local function flashTarget()
     TweenService:Create(targetDisplay, TweenInfo.new(0.12),
@@ -583,20 +842,18 @@ local function flashTarget()
     end)
 end
 
--- تحديث شريط الهدف بالاسم الفعلي الذي سيُستخدم
 local function updateTargetDisplay()
     if not selectedPlayer then
-        targetDisplay.Text      = "🎯  المستهدف: الكل"
+        targetDisplay.Text       = "🎯  المستهدف: الكل"
         targetDisplay.TextColor3 = Color3.fromRGB(140, 255, 165)
         return
     end
     local effective = buildTarget()
     if effective ~= selectedPlayer then
-        -- تم تجاوز وضع 3 أحرف بسبب وهمي → أعلم المستخدم
-        targetDisplay.Text      = "🛡️  " .. selectedPlayer .. "  ← اسم كامل (في وهمي)"
+        targetDisplay.Text       = "🛡️  " .. selectedPlayer .. "  ← اسم كامل (في وهمي)"
         targetDisplay.TextColor3 = Color3.fromRGB(255, 200, 80)
     else
-        targetDisplay.Text      = "🎯  المستهدف: " .. effective
+        targetDisplay.Text       = "🎯  المستهدف: " .. effective
         targetDisplay.TextColor3 = Color3.fromRGB(140, 255, 165)
     end
 end
@@ -643,7 +900,6 @@ local function refreshPlayers()
 
     for idx, p in ipairs(Players:GetPlayers()) do
         local ghost    = hasConflict(p.Name)
-        -- ⚠️ على أسماء فيها وهمي (مجرد تلوين إضافي للمعلومة)
         local btnLabel = ghost and ("⚠️ " .. p.Name) or ("👤 " .. p.Name)
         local w        = math.max(72, #btnLabel * 8 + 22)
 
@@ -721,4 +977,4 @@ ToggleCircle.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
-print("[MO+SH+BLO] ✅ جاهز — منع الوهمي: تلقائي (اسم كامل عند التعارض)")
+print("[MO+SH+BLO] ✅ جاهز — ميزة الغامض مضافة | منع الوهمي: تلقائي")
